@@ -26,3 +26,29 @@ kubebuilder init --domain sarmag.co --repo sarmag.co/todo
 kubebuilder create api --group todo --version v1 --kind TodoList
 ```
 
+### Make the manifests and deploy them
+```bash
+make manifests
+make install
+make run
+```
+
+### Test it out 
+Create an object of the TodoList type
+```bash
+k apply -f samples/todo.yml
+```
+This will start the operator's reconciliation loop
+
+```bash
+k apply -f samples/pod.yml
+```
+This will create a dummy pod with the name Jack.
+When the name matches, the reconciliation loop will
+update the status of the TodoList
+
+
+To check the status of the TodoList, run
+```bash
+k -n operator-namespace describe todolist jack
+```

@@ -1,0 +1,7 @@
+apiVersion: todo.sarmag.co/v1
+kind: TodoList
+metadata:
+  name: jack 
+  namespace: operator-namespace
+spec:
+  task: jack

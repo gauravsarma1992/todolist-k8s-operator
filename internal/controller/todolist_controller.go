@@ -18,75 +18,77 @@ package controller
 
 import (
 	"context"
+	"time"
+
+	"github.com/go-logr/logr"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	log "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	todov1 "sarmag.co/todo/api/v1"
 )
 
-// TodoListReconciler reconciles a TodoList object
 type TodoListReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
 //+kubebuilder:rbac:groups=todo.sarmag.co,resources=todolists,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=todo.sarmag.co,resources=todolists/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=todo.sarmag.co,resources=todolists/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the TodoList object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
-func (r *TodoListReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
-	log.Info("reconciling todoList custom resource")
+func (r *TodoListReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+	var (
+		todoList todov1.TodoList
+		podList  corev1.PodList
+		logger   logr.Logger
 
-	// Get the TodoList resource that triggered the reconciliation request
-	var todoList todov1.TodoList
-	if err := r.Get(ctx, req.NamespacedName, &todoList); err != nil {
-		log.Error(err, "unable to fetch TodoList")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		isCompleted bool
+	)
+
+	logger = log.FromContext(ctx)
+	logger.Info("Reconciling TodoList")
+
+	if err = r.Get(ctx, req.NamespacedName, &todoList); err != nil {
+		logger.Error(err, "Error in fetching Todolist")
+		err = client.IgnoreNotFound((err))
+		return
 	}
 
-	// Get pods with the same name as TodoList's friend
-	var podList corev1.PodList
-	var isCompleted bool
-	if err := r.List(ctx, &podList); err != nil {
-		log.Error(err, "unable to list pods")
-	} else {
-		for _, item := range podList.Items {
-			if item.GetName() == todoList.Spec.Task {
-				log.Info("pod linked to a todoList custom resource found", "name", item.GetName())
-				isCompleted = true
-			}
+	if err = r.List(ctx, &podList); err != nil {
+		logger.Error(err, "Error in fetching pods list")
+		return
+	}
+
+	for _, item := range podList.Items {
+		if item.GetName() != todoList.Spec.Task {
+			continue
 		}
+		logger.Info("Pod just became available with", "name", item.GetName())
+		isCompleted = true
 	}
 
-	// Update TodoList' happy status
 	todoList.Status.IsCompleted = isCompleted
-	if err := r.Status().Update(ctx, &todoList); err != nil {
-		log.Error(err, "unable to update todoList's happy status", "status", isCompleted)
-		return ctrl.Result{}, err
+	if err = r.Status().Update(ctx, &todoList); err != nil {
+		logger.Error(err, "Error in updating TodoList", "status", isCompleted)
+		return
 	}
-	log.Info("todoList's happy status updated", "status", isCompleted)
 
-	log.Info("todoList custom resource reconciled")
-	return ctrl.Result{}, nil
+	if todoList.Status.IsCompleted == true {
+		result.RequeueAfter = time.Minute * 2
+	}
+	return
 }
 
-// SetupWithManager sets up the controller with the Manager.
 func (r *TodoListReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&todov1.TodoList{}).
+		Watches(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForObject{}).
 		Complete(r)
 }
