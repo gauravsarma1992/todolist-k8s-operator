@@ -29,13 +29,13 @@ type TodoListSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of TodoList. Edit todolist_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Task string `json:"task,omitempty"`
 }
 
 // TodoListStatus defines the observed state of TodoList
 type TodoListStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	IsCompleted bool `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

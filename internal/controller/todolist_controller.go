@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,10 +48,39 @@ type TodoListReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.14.4/pkg/reconcile
 func (r *TodoListReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
+	log.Info("reconciling todoList custom resource")
 
-	// TODO(user): your logic here
+	// Get the TodoList resource that triggered the reconciliation request
+	var todoList todov1.TodoList
+	if err := r.Get(ctx, req.NamespacedName, &todoList); err != nil {
+		log.Error(err, "unable to fetch TodoList")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
+	// Get pods with the same name as TodoList's friend
+	var podList corev1.PodList
+	var isCompleted bool
+	if err := r.List(ctx, &podList); err != nil {
+		log.Error(err, "unable to list pods")
+	} else {
+		for _, item := range podList.Items {
+			if item.GetName() == todoList.Spec.Task {
+				log.Info("pod linked to a todoList custom resource found", "name", item.GetName())
+				isCompleted = true
+			}
+		}
+	}
+
+	// Update TodoList' happy status
+	todoList.Status.IsCompleted = isCompleted
+	if err := r.Status().Update(ctx, &todoList); err != nil {
+		log.Error(err, "unable to update todoList's happy status", "status", isCompleted)
+		return ctrl.Result{}, err
+	}
+	log.Info("todoList's happy status updated", "status", isCompleted)
+
+	log.Info("todoList custom resource reconciled")
 	return ctrl.Result{}, nil
 }
 
