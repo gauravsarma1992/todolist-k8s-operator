@@ -7,7 +7,11 @@ as the TodoList, it marks the status as True.
 
 This operator only operates on the `operator-namespace` namespace.
 
-It also listens to the events of any pod changes which happens on the system.
+It also listens to the events of any pod changes which happens on the
+system using the `Watches(source.Source, handler.EventHandler, ...)` method
+on the Manager.
+
+To listen on external events, we can setup a channel as a source as well.
 
 ## Installation
 

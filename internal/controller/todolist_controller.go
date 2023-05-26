@@ -23,9 +23,11 @@ import (
 	"github.com/go-logr/logr"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	log "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -86,9 +88,38 @@ func (r *TodoListReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	return
 }
 
-func (r *TodoListReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+func (r *TodoListReconciler) startTickerLoop(periodicReconcileCh chan event.GenericEvent) {
+	var (
+		ticker *time.Ticker
+		count  int
+	)
+	ticker = time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			periodicReconcileCh <- event.GenericEvent{Object: &todov1.TodoList{ObjectMeta: metav1.ObjectMeta{Name: "jack", Namespace: "operator-namespace"}}}
+
+			count += 1
+			if count > 100 {
+				return
+			}
+		}
+	}
+}
+
+func (r *TodoListReconciler) SetupWithManager(mgr ctrl.Manager) (err error) {
+	var (
+		periodicReconcileCh chan event.GenericEvent
+	)
+	periodicReconcileCh = make(chan event.GenericEvent)
+	go r.startTickerLoop(periodicReconcileCh)
+
+	err = ctrl.NewControllerManagedBy(mgr).
 		For(&todov1.TodoList{}).
 		Watches(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForObject{}).
+		Watches(&source.Channel{Source: periodicReconcileCh}, &handler.EnqueueRequestForObject{}).
 		Complete(r)
+	return
 }
