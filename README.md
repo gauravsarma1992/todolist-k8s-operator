@@ -1,5 +1,14 @@
 # K8s Operators
 
+## Working
+The operator operates on a Kubernetes CRD TodoList. It listens on the
+pods available in the system. If there are any pods with the same name
+as the TodoList, it marks the status as True.
+
+This operator only operates on the `operator-namespace` namespace.
+
+It also listens to the events of any pod changes which happens on the system.
+
 ## Installation
 
 ### Setup local k8s cluster
@@ -52,3 +61,4 @@ To check the status of the TodoList, run
 ```bash
 k -n operator-namespace describe todolist jack
 ```
+
