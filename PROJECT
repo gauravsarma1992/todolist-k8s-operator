@@ -7,4 +7,14 @@ layout:
 - go.kubebuilder.io/v4
 projectName: k8s-operators
 repo: sarmag.co/todo
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: sarmag.co
+  group: todo
+  kind: TodoList
+  path: sarmag.co/todo/api/v1
+  version: v1
 version: "3"

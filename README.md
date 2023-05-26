@@ -23,5 +23,6 @@ kubebuilder version
 ### Setup the domain, API and the groups
 ```bash
 kubebuilder init --domain sarmag.co --repo sarmag.co/todo
+kubebuilder create api --group todo --version v1 --kind TodoList
 ```
 
