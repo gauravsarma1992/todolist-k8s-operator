@@ -13,7 +13,7 @@ on the Manager.
 
 To listen on external events, we can setup a channel as a source as well.
 
-## Installation
+## Prerequisites
 
 ### Setup local k8s cluster
 Ensure you have a k8s cluster installed locally.
@@ -22,6 +22,7 @@ I use `kind` for my local cluster needs.
 To create the cluster, run
 ```bash
 kind create cluster --name operators
+k create ns operator-namespace
 ```
 
 ### Install kubebuilder
@@ -32,6 +33,14 @@ kubebuilder version
 # This should give an output like the following
 # Version: main.version{KubeBuilderVersion:"3.10.0", KubernetesVendor:"1.26.1", GitCommit:"0fa57405d4a892efceec3c5a902f634277e30732", BuildDate:"2023-04-15T08:10:35Z", GoOs:"darwin", GoArch:"amd64"}
 ```
+
+### Install cert-manager
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
+```
+
+
+## Controller Installation
 
 ### Setup the domain, API and the groups
 ```bash
@@ -46,7 +55,7 @@ make install
 make run
 ```
 
-### Test it out 
+### Test it out
 Create an object of the TodoList type
 ```bash
 k apply -f samples/todo.yml
@@ -66,3 +75,17 @@ To check the status of the TodoList, run
 k -n operator-namespace describe todolist jack
 ```
 
+
+## Webhook Installation
+
+### Scaffold the webhook code
+```bash
+kubebuilder create webhook --group todo --version v1 --kind TodoList  --programmatic-validation
+```
+
+### Make the manifests and deploy them
+```bash
+make docker-build IMG=gsarma/k8s-operators:v1
+kind load docker-image gsarma/k8s-operators:v1 --name k8s-operators
+make deploy IMG=gsarma/k8s-operators:v1
+```
