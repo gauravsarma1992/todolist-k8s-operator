@@ -17,6 +17,8 @@ limitations under the License.
 package v1
 
 import (
+	"errors"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -42,6 +44,10 @@ var _ webhook.Validator = &TodoList{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *TodoList) ValidateCreate() error {
 	todolistlog.Info("validate create", "name", r.Name)
+	if r.Spec.Task == "" {
+		err := errors.New("task cannot be empty")
+		return err
+	}
 
 	// TODO(user): fill in your validation logic upon object creation.
 	return nil

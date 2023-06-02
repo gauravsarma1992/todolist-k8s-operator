@@ -83,6 +83,12 @@ k -n operator-namespace describe todolist jack
 kubebuilder create webhook --group todo --version v1 --kind TodoList  --programmatic-validation
 ```
 
+### Uncomment lines in the following file
+```bash
+- config/crd/kustomization.yaml
+- config/default/kustomization.yaml
+```
+
 ### Make the manifests and deploy them
 ```bash
 make docker-build IMG=gsarma/k8s-operators:v1
